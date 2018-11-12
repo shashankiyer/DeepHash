@@ -7,14 +7,20 @@ from util import sign
 # optimized
 def get_mAPs(q_output, q_labels, db_output, db_labels, Rs, dist_type):
     dist = distance(q_output, db_output, dist_type=dist_type, pair=True)
+    print("Dist= ", dist)
+    exit(1)
     unsorted_ids = np.argpartition(dist, Rs - 1)[:, :Rs]
+    print("IDs= ", unsorted_ids)
     APx = []
     for i in range(dist.shape[0]):
         label = q_labels[i, :]
+        print('label=',label)
         label[label == 0] = -1
         idx = unsorted_ids[i, :]
         idx = idx[np.argsort(dist[i, :][idx])]
+        print('Subset DB.LB', db_labels[idx[0: Rs], :])
         imatch = np.sum(np.equal(db_labels[idx[0: Rs], :], label), 1) > 0
+        print('imatch=', imatch)
         rel = np.sum(imatch)
         Lx = np.cumsum(imatch)
         Px = Lx.astype(float) / np.arange(1, Rs + 1, 1)
@@ -236,17 +242,29 @@ if __name__ == "__main__":
     database = ds()
     query = ds()
 
-    database.output = np.sign(np.random.rand(10000, 64) - 0.5)
-    database.label = np.sign(np.random.rand(10000, 20) - 0.5)
-    database.label[database.label < 0] = 0
-    query.output = np.sign(np.random.rand(1000, 64) - 0.5)
-    query.label = np.sign(np.random.rand(1000, 20) - 0.5)
-    query.label[query.label < 0] = 0
+    database.output = np.sign(np.random.rand(4, 64) - 0.5)
+    print('DB.OP', database.output)
+    one_hot_pos = np.random.randint(0, 20, 4)
+    database.label = np.zeros([4, 20])
+    database.label[np.arange(4), one_hot_pos] = 1
 
-    print(m.get_mAPs_after_sign_with_feature_rerank(database, query, 500))
-    print(m.get_mAPs_by_feature(database, query, 500))
-    prec, rec, maps = m.get_precision_recall_by_Hamming_Radius_All(
+    #database.label[database.label < 0] = 0
+    print('DB.LB', database.label)
+    query.output = np.sign(np.random.rand(3, 64) - 0.5)
+    print('QU.OP', query.output)
+    #query.label = np.sign(np.random.rand(3, 20) - 0.5)
+    #query.label[query.label < 0] = 0
+
+    one_hot_pos = np.random.randint(0, 20, 3)
+    query.label = np.zeros([3, 20])
+    query.label[np.arange(3), one_hot_pos] = 1
+
+    print('QU.LB', query.label)
+
+    #print(m.get_mAPs_after_sign_with_feature_rerank(database, query, 1))
+    print(m.get_mAPs_by_feature(database, query, 3))
+    '''prec, rec, maps = m.get_precision_recall_by_Hamming_Radius_All(
         database, query)
     print(prec)
     print(rec)
-    print(maps)
+    print(maps)'''

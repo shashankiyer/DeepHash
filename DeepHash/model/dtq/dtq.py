@@ -65,6 +65,8 @@ class DTQ(object):
         self.save_dir = os.path.join(config.save_dir, self.file_name + '.npy')
         self.log_dir = config.log_dir
 
+        self.all_wts = np.load(self.save_dir).tolist()
+
         # Setup session
         config_proto = tf.ConfigProto()
         config_proto.gpu_options.allow_growth = True
@@ -300,7 +302,7 @@ class DTQ(object):
     def update_codes_and_centers(self, img_dataset):
         for i in range(self.max_iter_update_Cb):
             self.update_codes_batch(img_dataset, self.code_batch_size)
-            self.update_centers(img_dataset)
+            #self.update_centers(img_dataset)
 
     def update_embedding_and_triplets(self, img_dataset):
         epoch_iter = int(img_dataset.n_samples / self.batch_size)
@@ -382,39 +384,41 @@ class DTQ(object):
     def val_forward(self, img_dataset, val_print_freq=100):
         batch = int(ceil(img_dataset.n_samples / float(self.val_batch_size)))
         img_dataset.finish_epoch()
-        for i in range(batch):
+        for i in range(60):
             images, labels, codes = img_dataset.next_batch(self.val_batch_size)
             output = self.sess.run([self.img_last_layer],
                                    feed_dict={self.img: images,
                                               self.stage: 1})
             img_dataset.feed_batch_output(self.val_batch_size, output)
+            print(len(output), output[0].shape, output[0].ndim, output)
             if i % val_print_freq == 0:
                 print("%s #validation# batch %d/%d" % (datetime.now(), i, batch))
 
     def validation(self, img_query, img_database, R=100):
         print("%s #validation# start validation" % (datetime.now()))
-
+        
         # Forward to get output
         self.val_forward(img_query)
         self.val_forward(img_database)
 
         # Initialize centers
-        self.sess.run(self.C.assign(self.initial_centers(img_database.output)))
+        self.sess.run(self.C.assign(self.all_wts))
 
         # Get codes of database && Update centers
         self.update_codes_and_centers(img_database)
 
         # Get codes of query
         self.update_codes_batch(img_query, self.code_batch_size)
-
+        
         # Evaluation
         print("%s #validation# calculating MAP@%d" % (datetime.now(), R))
         C_tmp = self.sess.run(self.C)
+        
         mAPs = MAPs_CQ(C_tmp, self.subspace_num, self.subcenter_num, R)
-        self.save_codes(img_database, img_query, C_tmp)
+        #self.save_codes(img_database, img_query, C_tmp)
         return {
-            'map_feature_ip': mAPs.get_mAPs_by_feature(img_database, img_query),
-            'map_AQD_ip':  mAPs.get_mAPs_AQD(img_database, img_query),
+            #'map_feature_ip': mAPs.get_mAPs_by_feature(img_database, img_query),
+            #'map_AQD_ip':  mAPs.get_mAPs_AQD(img_database, img_query),
             'map_SQD_ip': mAPs.get_mAPs_SQD(img_database, img_query)
         }
 
