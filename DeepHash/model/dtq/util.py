@@ -158,6 +158,7 @@ class Dataset(object):
         start = self._index_in_epoch - batch_size
         end = self._index_in_epoch
         self._codes[self._perm[start:end], :] = codes
+        print("codes dim shape", self._codes.ndim, self._codes.shape)
         return
 
     @property
